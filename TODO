@@ -1,0 +1,159 @@
+TODO
+
+NOTE: These are informal notes and treated as a bag of ideas. A scratchpad. Sometimes we'll edit wording, merge items or delete old/irrelevant ones. Or make an effort to prioritize and order them, percolating the "do next" items to the very top. But not a hard rule. More about making sure ideas do not get lost when revisited in later work sessions.
+
+................
+
+integrate ideas from README. elim dups
+
+event handle not if else block but map type -> fn, or handle name convention lookup or annotation
+
+allow the P-2-2-6 style notation to be passed as a sys/main arg, and the sim applies those implied config value overrides (updated over its loaded base config.py) *rather* than having to go read a 2nd config file (like the ones in configs/)
+
+argparse or getopt?
+
+PS1. able to turn off most/all logging during sim run. (PS = performance & scalability upgrade)
+
+PS1. one at a time ingest of source orders list
+
+PS3. not accumulate records in mem. or make config toggleable since good for testing but bad for a real run
+
+PS4. one lookup of orders tracking/lifecycle metadata rather than many distinct (order_loc, order_ready, etc.). measure before/after. might need to quiet the logging to see the difference in the numbers
+
+logging: uncaught exceptions become ERROR in log
+logging: exception and stack trace logged as one line
+
+write run stats to database and plot charts from chart it
+
+enrich the model by implementing some of the ideas from my README (applying ML to decision-making on courier assignment, eg. orders more complex. prep takes time. variety of distinct couriers avail. revenue tracked. etc.)
+
+remove all absolute times from output except maybe near beginning, once only; everywhere else should be rel/diff times
+    change priority in the event[0] field to be reltime not abstime
+
+logging: confirm that my use of logging is threadsafe in terms of how it writes to log/console. think so but confirm
+
+modify tests that depend on assertions/assumptions of the relative ordering of new order-received's, if in P or T mode when gap between orders is 0
+    skip assertions of relative when in that permutation
+
+elim the 2 discrepancies in temporal version of A_TestBasic
+
+consider taking out order_rate infinity support
+
+consider replacing the sleep in Temporal mode with another Timer. advantage is makes the arch simpler for Temp mode. but priority mode becauses more latency/compute expensive across OT order iterations during the ingest phase
+
+tests:
+    moved to overflow when expected?
+    rejects/ignores a malformed order (sim checks each new order it sees in KT.handle_order. prob also in OT run/read_orders)
+    graceful behavior if an order has a negative shelf_life? negative decay_rate?
+
+in priority mode, when order_rate is infinity, and OT submits orders all with the same simu time, all events have the same priority. then over in KT, since there are events in the queue with the same time/priority (0), they're not being consumed by KT in the same order they were added to the queue by OT. eg order 1, order 10, order 11... order 2, order 20, order 21... this is counter-intuitive and makes testing harder
+
+refactor a common waste check method, that is called at start of handle_order and handle_courier_arrive (or for any other real event (ie NOT shutdown))
+
+configure by giving the perm as a string code, and it wont need to import a config file
+
+real time printed once near start
+short code for every log msg, near left
+
+test can submit a single order (sim will be told to not read from orders_file), so that I can then make assertions about what happens with it
+test that submits X orders such that a temp shelf gets full, and the test asserts that the X+1th order did go into overflow
+
+standard module comments, fn comments
+
+exception handling in KT.run() and OT.run()
+
+test.py:
+#1 don't see sim's log spewing to console when the tests run, can toggle on/off
+#2 specify the config file and/or any/all indiv config perms via sim.main() call, and tests.sh args
+
+sys.argv and main kwargs override of all individual params
+
+cleanly redirect all output of tests.sh to log
+
+sim.py, configure(): the point where it checks sys.argv: do better in case where tests.sh called with 1st pos arg of specific test to run, because here sim.py configure would treat it as the configmod name, not the testcase/method name. basically, configure should NOT read sys.argv. only its fn args/kwargs
+
+TODO and TODO doc rev:
+    to override specific config values via cmdlin args
+    to run with a single order only, from cmdlin arg
+
+create more temporal perm tests which take super short time but otherwise exercise a useful edge case I can make test assertions on
+
+tests2.sh/test.py:
+test that after loading orders we have the count expected
+temporal and priority variants on every case (where it matters; eg import sim won't vary)
+assert that we loaded the order count we expected (eg 132 from orders.json)
+assert that we can parse all orders for all expected fields with no exceptions thrown
+for the temporal variants, assert that the total time passed is approx what we expected (min anyway)
+
+test perm with an orders json which is empty
+test perm with an orders json with a few orders, each of which is missing an expected key (eg id, shelf-life, etc.)
+
+fix the float precision diff between 'courier arrives' log the arrives args, and 'kitchen handle_courier_arrives' log its arg. the latter is more precise with more digits because %s. former is %f
+
+STATUS kqueue peak, ctasks peak
+
+perms.sh:
+test case perms where the orders rate is max/infinity (so pause between is 0)
+test case with a single order, and its decayRate/shelfLife and the courier delay combined is such that I can guarantee it will waste away before it can be picked up
+test case perms where capacity is 0 for all but overflow. for overflow only
+test case perms where the shelf capacity is huge/infinity for all shelves. for overfly only
+test case perms with an alt orders json file
+
+README: logs: give hints as to how to compare them between runs. especially the initial config dump, and then at the end the last STATUS line stats
+
+in temporal version, does MT need to call kt.q.join() to block until that queue is empty?
+
+tests
+    did succeed? real assertions
+    multiple tests
+    parallelize. esp the T mode tests
+
+ocheckw  == pfailwap
+
+log all shelf contents like:
+hot o1 oid ready age value courier-eta-rel (+2.2s)
+hot o2 oid ready age value
+cold o3 oid ready age value
+...
+
+log_shelves also logs content of capacity_dropped and wasted; with an arg to toggle logging them
+
+issue where an order should remember its past overflow decay time if its been moved back to its ideal temp shelf
+
+count for peak courier_timers; status
+
+test assert all expected 132 orders were processed (len of the orders.json)
+
+devtest feature where I can schedule a courier arrival to occur *after* the order expires to waste (now + shelfLife/decayRate in secs)
+
+note: to see the range of shelfLife:
+grep shelfLife orders.json | sort -n -k 1.18
+shelfLife range 20 600
+decayRate range 0.05 to 0.9
+
+......
+
+PROCESS ME:
+
+tests: more, better and parallelized
+
+orders: more and better ways to input them. more variety of canned order sets. parsing validation both by sim and tests
+
+config: upgrade/polish config-setting mechanisms. we did "cow-pathing" on the config build-out but it could be improved further
+
+logging: benefit from more production-izing. exceptions and stack traces handled better
+
+change order records accumulation/retention in memory so is an upper bound. retention is helpful for testing but doesn't scale and will make it eventualy crash when a large enough number of orders processed. make it configurable and extensible
+
+when courier picks up order and leaves to deliver, it takes time to truly deliver; time based on distance to the customer location
+
+courier out on delivery can fail for variety of reasons (out of gas, mech failure, traffic gridlock, cops, health, etc.)
+
+every order has a cost and price, and a profit margin; this is counted in status by category (profits from success delivery, profits missed and costs incurred from capdrops/wasted)
+
+in-flight couriers can be cancelled if their order is wasted
+
+waste checks done uniformly for all time-passing events
+
+persisted state. replay a sim run from any persisted snapshot
+

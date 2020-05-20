@@ -1,0 +1,247 @@
+README
+
+ksim: a restaurant delivery sim
+    (as a low-fidelity, proof-of-concept spike)
+
+by Mike Kramlich, groglogic@gmail.com, 2020 May 19
+--------------------------------------------------
+
+Platform known to work:
+    Python 3.7.6, GNU bash 3.2.57, OS X 10.15 64-bit, Intel i3, 2 cores, 8gb mem
+
+Any Python 3.x on a modern-ish Mac or Linux box will likely be fine.
+
+There are no additional dependencies. No install or configuration steps.
+
+..............
+
+To run:
+	$ ./sim.py
+
+That runs with the default config (in ./config.py) and orders feed (in ./orders.json) and sends all output to console.
+
+..............
+
+
+More Usage
+
+
+To run with an alternate config file (whose format is a Python dict literal):
+    $ ./sim.py configs/config-P-140-200-200-10-10-10-15-orders.py
+
+Any config files or values passed as arguments simply update/override the base config in memory (as defined in config.py) -- it inherits entries, not a clean slate. If you create an alternate config file, it does not need to possess all the possible keys, only the keys you wish to override. As long as every key is present in either the base config file (config.py) or in your alternate overlay config, the sim will be fine.
+
+A variety of config file permutations of interest (32 total) are canned in the configs subdir. They're used by the automated tests and can be used ad hoc during dev.
+
+To run all the interesting permutations, time and log each (regenerating logs/log-* named to correspond with each perm):
+    $ ./perms.sh
+
+To run all the tests (20 total) with full console output:
+    $ ./tests.sh # this is mostly a wrapper to test.py
+
+To run all the tests, but quieter, so only shows progress, results and timing:
+    $ ./tests.sh 2>&1 > log
+
+To run a specific test (examples; just replace with the class and method names desired):
+    $ ./tests.sh B_TestBasic.test_F_order_values
+    $ ./tests.sh B_TestBasic.test_I_large_order_counts 2>&1 > log
+    $ ./tests.sh C_TestBasicTemporal.test_G_waste
+
+To try an order valuation directly in a REPL:
+    $ python3
+    >>> import sim
+    >>> sim.order_value(1,100,50,1)
+    0.5
+
+That is the only interface of the module advertised to work standalone from within a Python REPL. The code is designed to normally be run as "./sim.py" on the command line, and not to be used as an API. However, by studying test.py you can learn the other ways you can potentially exercise it from other code: how the tests configure it, run it and then, after it has finished and all its queue threads (and timer tasks) have safely stopped, to query the sim's state afterward in the same Python session.
+
+
+Testing 
+
+
+If the tests all pass you'll see output like this:
+
+$ ./tests.sh 2>&1 > log              
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 423.368s
+
+OK
+
+real	7m3.439s
+user	0m37.209s
+sys     0m5.652s
+
+
+Test Permutation Codes
+
+
+For efficiency the testing infrastructure (essentially: perms.sh, tests.sh, test.py, configs/ and logs/) uses a common shorthand notation for config permutations. It's not enforced by the sim itself. The sim only cares about the values in its loaded cfg dict (which comes from config.py, by default.)
+
+Key to the perm notation:
+    T/P: concurrency type; T for temporal, P for priority
+    nums are the numeric config in order they appear in the default config.py
+    lastly is the bare filename of the orders JSON file to use
+
+The configs/ file which corresponds to the default config.py is config-P-2-2-6-10-10-10-15-orders.py
+
+It's name means:
+    priority mode, 2 orders per sec, 2s courier arrival min, 6s courier arrival max, 10 hot shelf cap, 10 cold shelf cap, 10 frozen shelf cap, 15 overflow shelf cap, orders.json
+
+And it's temporal mode equivalent is config-T-2-2-6-10-10-10-15-orders.py
+
+Note that of all the canned config files we tend to leave out the temporal version of the 4200-4200 case. It's not wired into perms.sh or the tests. Because it would take about 70 minutes to run. So to keep them fast only its priority variant is wired in. It can take as little as 0.082s on a typical box.
+
+The tests exercise the code in both priority mode and temporal. All features tested, all interesting config permutations, and all possible assertions are always made somewhere in priority mode, by the tests. However, not everything is tested in temporal mode, because it's less predictable. Look through test.py to see examples of where different assertions are made based on the concurrency mode. All priority mode tests should always pass. A few of the temporal mode test permutations are more sensitive to your host's load and thread scheduling. If you see any of those fail it's typically transient and a re-run with no changes will see it succeed. Worst case, reduce the thread scheduling load on your host. Or only run the priority tests.
+
+
+Logging
+
+
+The logs subdir ships with a few sample logs as an example of normal results. The sim.log file is an example of the output from a default run.
+
+If you wish to see logs from all the canned config scenarios run perms.sh and it will create additional logs, each named according to the config permutation ran. The filename indicates which config values were used for its run. Note that results are not always identical between each run with the same config, for at least 2 reasons:
+    1. the random range for courier delay (by default between 2 and 6 seconds)
+    2. due to thread scheduling on your local host, when run in temporal mode
+The first factor can be eliminated by setting the minimum and maximum courier delay to the same value. The second factor can be minimized by running with no other signif load at the time, although, even in most cases it is not a significant influence. However, unexpected delays due to host OS thread scheduling can never be ruled out in temporal mode. Therefore to totally eliminate this second factor only deal with priority mode. Note that even in priority mode, in the default config scenario, we've observed that it is common for the peak content size of single-temp shelves to fluctuate a little between runs, apparently in the range from 5 to 7.
+
+Below is a snippet of the beginning of typical log output from the sim:
+
+INFO  MT:             :  ksim: a restaurant delivery sim (as a low-fidelity, proof-of-concept spike); by Mike Kramlich, groglogic@gmail.com, 2020 May 19
+INFO  MT:             :  sys.argv: ['./sim.py']
+INFO  MT:             :  config fn args: ()
+INFO  MT:             :  config fn kwargs: {}
+INFO  MT:             :  loading base config: ./config.py
+INFO  MT:             :  cfg: {'concurrency': 'priority', 'order_rate': 2.0, 'courier_arrival_min': 2.0, 'courier_arrival_max': 6.0, 'shelf_capacity': {'hot': 10, 'cold': 10, 'frozen': 10, 'overflow': 15}, 'orders_file': 'orders.json', 'orders_literal': None, 'courier_dispatch_enabled': True, 'log_config_large_orders_literal': True}
+INFO  MT: +0.000000:  STATUS otlife 0-0-0, ktlife 0-0-0-0, kqueue 0, ctasks 0, hot 0/0/10, cold 0/0/10, frozen 0/0/10, overflow 0/0/15, noshelf 0, capdrops 0, wasted 0, ocheckw 0, events 0, unhand 0, orders 0, oready 0, cdispatch 0, carrive 0, pfailcd 0, pfailwap 0, pfailwan 0, pfailbl 0, deliver 0
+INFO  OT: +0.000000:  started
+
+INFO is the log level. MT is the thread who wrote that log line.
+
+Key to thread notation:
+    MT is main thread
+    OT is the singleton OrderingThread
+    KT is the singleton KitchenThread
+    CT is a courier timer/task thread (one of many, and which are spawned as needed by KT; ONLY exist in temporal mode)
+
+You'll see MT print a dump of configuration before it starts the core of the sim. Before it starts the OT or KT threads, the MT will cause that STATUS line you see. (Normally, while the core of the sim is running, only KT prints the STATUS lines.) The line with OT is to indicate starting up. The +0.000000 field is the current relative time (since start) within the sim. In temporal mode it is the number of real world seconds since start. In priority mode it is the number of simulated/pretend seconds since start. If ever in doubt as to which mode a sim's log is in look at MT's early dump of config. Look at the concurrency param. It and the rest of the loaded config will stay constant through a single run of the sim.
+
+The STATUS lines show many useful counters, gauges and flags. The best guide to the syntax/semantics of them is to look at the function which printed it. It is KitchenThread's status() method. Some highlights:
+
+    otlife 0-0-0:   whether OT ever started (1 yes, 0 no); running now; ended via exception thrown out of OT.run()
+    ktlife 0-0-0-0: similar pattern, except the 4th number is the count of shutdown events KT has received. MT's signal to ask KT to stop
+    hot 0/0/10:     count of orders currently on this shelf; peak count; max capacity
+                    (same for cold, frozen and overflow shelves)
+
+Here is an example of OT ingesting a new order and submitting it into KT's queue. It is in OrderingThread.run():
+
+INFO  OT: +0.000000:  placed order: 1, a8cfcb76-7f24-4420-a5ba-d46dd77bdffd, Banana Split, new kqueue ~1, now 1589278958.881035/+0.000000, order 1589278958.881035/+0.000000
+
+Here is OT ending its run because its finished submitting all orders it ingested:
+
+INFO  OT: +65.500000:  exits
+
+KT will also indicate when it started and exits. After starting KT runs in a top-level loop inside it's thread run method, consuming events out of the queue, blocking until a new event is available, and checking for exit conditions when it can. Here is KT beginning to handle a new event:
+
+INFO  KT: +0.000000:  kitchen handle_event: (1589278958.881035, ('order_received', 1, {'id': 'a8cfcb76-7f24-4420-a5ba-d46dd77bdffd', 'name': 'Banana Split', 'temp': 'frozen', 'shelfLife': 20, 'decayRate': 0.63}))
+
+The structure after "handle_event:" is a dump of the event object. Its a tuple. The 1st field is the priority value. In priority mode it represents the absolute timestamp which the event will be associated with and scheduled for. Though it will be a simulated time, not real. In temporal mode you will see a -1 in the priority field, and in temporal mode it is ignored. (Because in temporal mode it only looks at the wall clock time reported by the host, to learn the "true" time.) In priority mode, this priority field value becomes the time moment simulated by KT as it handles that event to completion.
+The 2nd field of the top-level tuple is the heart of the event. It is also a tuple. Its 1st field is the event name (called etype in the code). It is used by KT to decide how to handle it and route it to the right function. The remaining fields (if any) of this inner tuple will vary by the event type. The shutdown event has no other fields. See the code for the best description of how the other 2 events are structured, order_received and courier_arrived. Their processing functions are the methods of KT named "handle_<etype>".
+
+Here it dispatches a courier:
+
+INFO  KT: +0.000000:  dispatching courier: order 1, a8cfcb76-7f24-4420-a5ba-d46dd77bdffd, new ctimers 1, arrive 1589278963.729390/+4.848355
+
+For the arrive field in the log line above, the two numbers are the absolute time and the relative time for when the courier is scheduled to arrive. Since priority mode is exact and deterministic this second number, the relative time, should also correspond to the time reported later when that courier arrives. Whereas in temporal mode, these time numbers are more of a suggestion, and the code will make only a best faith effort to have the courier arrive at the time expected -- but otherwise be at the mercy of the whims of your host OS/CPU. The log example we're showing here is in priority mode, but in the temporal mode equivalent you would see a "~" in front of the arrive timestamp, as a reminder of it being not necessarily exact. (Note you'll see this "~" notation in other parts of the log where the number cannot be exact. For example, the "placed order" log lines when in temporal mode.) This time notation technique helped the developer doing log analysis during original development and seemed like it would be helpful to other users as well.
+
+Here it prepares an order and puts it on its ideal temp shelf. This is the happy path and simplest permutation of what could happen:
+
+INFO  KT: +0.000000:  kitchen prepares order instantly, ready: order 1, a8cfcb76-7f24-4420-a5ba-d46dd77bdffd, time 1589278958.881035, value 1.000000
+INFO  KT: +0.000000:  order added to ideal temp shelf: order 1, a8cfcb76-7f24-4420-a5ba-d46dd77bdffd, frozen
+
+Whenever the STATUS line log is printed the sim also checks to see if any orders are sitting on shelves, and if so prints them, like this:
+
+INFO  KT: +1.500000:  shelf cold    : 2ec069e3-576f-48eb-869f-74a540ef840c 0.999398
+INFO  KT: +1.500000:  shelf frozen  : a8cfcb76-7f24-4420-a5ba-d46dd77bdffd 0.952750, 58e9b5fe-3fde-4a27-8e98-682e58a4a65d 0.998933
+
+The long hexadecimal UUID is the order's ID. The float is it's current deliverability value, based on both it's age since being prepared, and whether it's on its ideal temp shelf, or on overflow.
+
+Note that the STATUS log function is called by KT once per event it handles. And once at the very beginning and end of the sim's run by MT. Its the best way to see a snapshot of the sim's runtime state and final results.
+
+Most of the log messages are at INFO level, with a few ERROR and DEBUG. The current logging level threshold for the sim is INFO. You can change that in sim.py's configure function. The logging level threshold in the tests is DEBUG.
+
+Near the end of the sim's run you'll see something like the following snippet. Note that this is in priority mode, where time is more deterministic and therefore the output and outcomes are more stable across runs with otherwise identical config:
+
+INFO  KT: +70.363989:  kitchen handle_event: (inf, ('shutdown',))
+INFO  KT: +70.363989:  STATUS otlife 1-0-0, ktlife 1-1-0-1, kqueue 0, ctasks 0, hot 0/6/10, cold 0/6/10, frozen 0/6/10, overflow 0/0/15, noshelf 0, capdrops 0, wasted 0, ocheckw 0, events 265, unhand 0, orders 132, oready 132, cdispatch 132, carrive 132, pfailcd 0, pfailwap 0, pfailwan 0, pfailbl 0, deliver 132
+INFO  KT: +70.363989:  exits
+INFO  MT: +70.363989:  STATUS otlife 1-0-0, ktlife 1-0-0-1, kqueue 0, ctasks 0, hot 0/6/10, cold 0/6/10, frozen 0/6/10, overflow 0/0/15, noshelf 0, capdrops 0, wasted 0, ocheckw 0, events 265, unhand 0, orders 132, oready 132, cdispatch 132, carrive 132, pfailcd 0, pfailwap 0, pfailwan 0, pfailbl 0, deliver 132
+INFO  MT:             :  simu time span: 70.363989s
+INFO  MT:             :  real time span: 0.113942s
+
+You'll see KT getting the signal to stop, via the shutdown event. (The 'inf' means it's priority is infinity, to ensure that shutdown has the worst/last priority compared to all the "payload" events. Also note that it is only set to infinity in priority mode. In temporal it is set to -1, and its priority value is ignored.) MT prints one last STATUS. Then the sim prints a measurement of how much time has passed. Simulated time span (aka 'simu_time_span' in the code), and real. In temporal mode these measurements will be close to identical (with real span slightly bigger than simulated span -- typically.) Whereas in priority mode the real time span will be massively smaller than the simulated. For a better feel for the kind of simu_time_span values and final events counts you should expect to see look at the code and comments in test.py's B_TestBasic.test_B_default_scenario_outcome method.
+
+The last 3 lines of the sim's log (like shown above) are the most important because they give the most signal for the buck. You can quickly sense if it was a healthy run with the expected outcome or not. Once you've become familiar enough with the numbers seen from past runs.
+
+Another log that's useful to analyze is the top-level console output of perms.sh (an example of which has been saved as perms.sh.log in logs/). Here's a command you can run to quantify the differences between the concurrency modes, and illustrate the superiority of priority over temporal:
+
+$ grep -A4 "0.5-300-300-10-10-10-15" logs/perms.sh.log
+
+P-0.5-300-300-10-10-10-15-orders
+
+real    0m0.298s
+user    0m0.254s
+sys     0m0.039s
+--
+T-0.5-300-300-10-10-10-15-orders
+
+real    9m22.667s
+user    0m1.163s
+sys     0m0.260s
+
+
+Orders
+
+
+To learn the range of shelfLife values in an orders file:
+    grep shelfLife orders.json | sort -n -k 1.18
+
+Here are the value ranges used in the default orders.json:
+    shelfLife 20    to 600
+    decayRate  0.05 to   0.9
+
+
+Architecture & Strategy
+
+
+    Here we'll give an overview of the most important aspects of the architecture, and especially talk about how we model concurrency.
+
+    The core of the design is an event queue. One queue only but with 4+ threads who can access it in some fashion. There is a producer-consumer pattern. The primary producer (though not the only one) is the OrderingThread (aka OT). It's responsible for reading a file of JSON orders and ingesting it into the system. It puts one "order_received" event into the queue for each order read. The sole consumer of the queue is the KitchenThread (aka KT). It's responsible for pulling events out of the queue and performing any work that needs to be done in response. It can also sometimes produce events back into the queue (related to the courier.) It also "owns" most of the mutable runtime state. All events are treated like immutable messages (though in practice we're not enforcing it in the code at the moment, because it was not truly necessary in this context.) The KT is meant to model "the kitchen" and therefore is responsible for preparing orders, dispatching couriers, maintaining shelves of ready orders, managing them for capacity and waste, and providing a simulated place for couriers to arrive and pickup orders for delivery.
+
+    There are a total of 3 event types in the current model -- though it would be easy to add more. In addition to "order_received" there is "courier_arrived" and "shutdown". You can guess what courier_arrived represents. When the KT gets that event from the queue it carries out a simulation of the courier having just arrived, and makes pickup and delivery decisions in a very crude way. The "shutdown" event is a kind of special lifecycle event used as a signal sent from the main thread (aka MT) to the KT, telling KT it should stop running, gracefully, at next best opportunity. Meaning once the backlog of enqueued events (plus any timer tasks that might not have fired yet) has drained to 0. The MT only sends that event after it knows that OT has finished ingesting all orders and putting them into the queue.
+
+    That's the high-level framework.
+
+    It should give a partial answer to how we make the sim "real-time", and how we handle concurrency. But that's not the full picture. Another piece of the puzzle has to do with how to model time itself, how to ensure the correct ordering of events, and how to design a system that is testable, deterministic, reliable and scalable. To do this we implemented two different timing mechanisms for concurrency. They each have different strengths and weaknesses, yet the code paths are 99% the same between them. A temporal-based concurrency mode and one that is priority-based.
+
+    The Temporal mode relies on Timer instances from the Python standard library, and on making calls to sleep(). This lets us schedule tasks for some future execution (after a minimum delay, at least) as well as to make the current thread pause (go to sleep) when needed, to simulate gaps between orders. When a Timer task fires it does so in a new short-lived thread (aka CT in the logs, standing for courier timer or task). Temporal mode has the advantage that the events simulated occur in truly "real" time as the program runs. Therefore if the sim is configured to ingest and submit 2 orders per second then it takes 1 second of the user's "wall clock" time every 2 orders. The load profile and scaling characteristics are closer to what a real production service would exhibit, in terms of CPU and thread scheduling. And its closer to the plainest interpretation of a "real-time" system. However, it has problems. Its disadvantages are that it takes longer to run tests and thus slows the dev lifecycle -- hurting productivity. It makes it much harder, if not practically impossible, to test extreme scaling edge cases. And lastly, it's the least predictable. Because, at least in this implementation, we're not building on top of a true RTOS. Because it was not deemed important. Therefore there are no hard guarantees around when a requested task will get put on the CPU, or when a scheduled task will truly fire. At best we can give only suggestions, and its up to the host OS's scheduler to make its effort, based on the total context of the process runtime environment at the time you're running a sim. With Timer we can specify a minimum delay for the future task fires -- but not a hard upper bound. Likewise with sleep() we can put the current thread to sleep for some minimum amount of time. But we cannot guarantee that the thread will not get otherwise starved for CPU execution time. With a more complex architecture (if not ideally an RTOS) we could try solving that and eliminating those imperfections. But that did not seem relevant, and it was not needed in a proof-of-concept spike like this. The ultimate impact on this sim is that we can make the sim work reasonably right in Temporal mode in about 99% of the ways we care about. However, certain kinds of test assertions will not be deterministic enough to be reliable. And some extreme config params will take too long to finish running.
+
+    Therefore... the Priority mode.
+
+    Priority mode relies on using a priority queue at it's heart, rather than an ordinary FIFO queue (the latter being the kind used in Temporal mode). In this mode the "time" of an event is represented by it's priority field in the event data structure (the 1st position in the event tuple.) And the queue gives it special treatment. The queue is responsible for guaranteeing the correct relative ordering of the events when they're pulled out and processed by the KT. They are pulled out in order by their numeric priority value, not by the order in which they were added. When the KT pulls an event out of the queue (while in Priority mode) the system then sets the current modelled time to the value of that priority field. The event's priority becomes the new "now". From KT's perspective. This lets us model time without having to rely on querying the host machine's time. And lets us schedule tasks for future execution simply by specifying their time as the value of the priority field. This lets us squeeze out all unnecessary pauses or gaps in wall clock time. While implementing a correct simulation of the flow of events over time. Therefore we can run tests *massively* faster. Test higher scales faster and more easily. And it's more deterministic than Temporal mode. It's less "real" than Temporal, but makes for a more useful simulation. Also, there are no Timer task threads (CTs) in this mode, therefore there are less threads, which is attractive as a general rule, because it makes the code simpler and there's less risk from thread access complexity.
+
+    Side note about the priority field of the event. It's ignored when the sim is run in Temporal mode (where we stuff -1 into it, rather than the event's time). Having the event format be the same between modes kept the code simpler.
+
+    This all said, there are advantages to both modes, Temporal and Priority. And it's illuminating to compare and contrast runs between them. So the code can run with either. By default the sim runs in Priority mode but you can change it in the config. (The concurrency param.)
+
+    Because tests run faster and more reliably in priority mode, all test assertions are checked when in priority mode. Some tests have config variants which *also* run in temporal mode. But these temporal variants are preserved mainly as a proof-of-concept, and to ensure the architecture continues to support multiple concurrency modes in an extensible way.
+
+    Another strategic decision made about the architecture was whether to bias to it being a simulation, vs, a real world order processing system. Since this is only a proof-of-concept we are heavily prioritizing and cutting corners, and have therefore left out features like a database, durable message queue or network service interfaces. But even as far as simulations go there are a lot of ideal features a production-grade simulation might have that are not present (yet??) in this system. Like what? Well, arguably a full simulation would model many more types of top-level business events than the 2 supported now (order_received and courier_arrived). And all actions which happen "instantly" in the current version should require the passage of time to manifest. The business state model and order lifecyle would be much more rich and complex in order to model the real world, with more exceptions and special cases. It could be helpful to model logistical/supply factors and financial impacts of the kitchen/courier operations. An "order" should have multiple distinct sub-items (burger, fries, drink, etc.), each with their own preparation times, costs, impacts, age decay and temperature shelf requirements. The space/volume taken by an order would not be uniform. An order would not get a dedicated courier but rather a more sophisticated choice made based on who's avail, their location, efficiency, etc. And a courier might pickup multiple orders meant for multiple distinct customer location deliveries, per pickup arrival. Order preparation and courier delivery capacity would fluctuate over time, with some regular cycles (daily, weekly, seasonal) and some one-time events, and some unpredictable factors. Order submission rates would fluctuate over time. Nature of the orders (what food types) would fluctuate over time (breakfast, dinner, etc).
+
+    Also, for a real tool, it would be important to know what is the goal of the simulation. What questions will it be expected to help us answer? Who will be its users? What to treat in a granular away and what to treat in the statistical abstract.
+
+    Some of the design decisions for this code were made to make it easier to test, rather than to make it a robust long-running production-grade service. For example, the sim's KT instance will accumulate records in memory that track the processing lifecycle of orders. They are not bounded currently. But this was considered a reasonable decision given it's a simulation, and only a proof-of-concept spike, not a ready product. And it made it a little easier to make assertions afterward within the same process session. But in a long-running service it would act like a memory leak. Likewise, we didn't care too much about the O() algorithmic complexity or scaling characteristics of the record collections we used to track order lifecycle in the KT. The goal was to get it working quickly, correctly, to be agile, and to work sufficiently at the scale of the 132 records in the example orders JSON file included. The tests include some configurations and permutations that poke around the edge cases and let us get a sample of how it scales -- but more as proof-of-concept, not a strict requirement. (For example, it was trivial to make the sim process 50k orders correctly, when in priority mode, and fast.) The ideal production system would have all params relevent to performance and scaling be specified, somewhere, and then equivalent runs would be reproduced and measured in a test suite.
+
+    In a real order processing system (not a simulation, but for the real world) its likely that things like order preparation, couriers and delivery, and any kinds of customer service experiences, will be the bottleneck, most of the time, and not the software compute itself. Though for a simulation (where, as we've discussed above, there do not have to be any unnecessary pauses in the real world) it would become more helpful to squeeze out every last drop of compute and algorithmic efficiency.
+
+    Lastly, we suspect that an ideal production architecture might be one that featured common elements and code paths between a real order management platform, and a simulation of it. And they could have similar interface points for machine learning systems to augment the decision-making, either to optimize for profits, customer experience or both.

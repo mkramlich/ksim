@@ -1,0 +1,155 @@
+P-0-2-6-10-10-10-15-orders
+
+real	0m0.081s
+user	0m0.052s
+sys	0m0.018s
+P-2-0-0-10-10-10-15-orders
+
+real	0m0.108s
+user	0m0.084s
+sys	0m0.018s
+P-2-2-2-10-10-10-15-orders
+
+real	0m0.134s
+user	0m0.109s
+sys	0m0.021s
+P-2-2-6-0-0-0-0-orders
+
+real	0m0.100s
+user	0m0.079s
+sys	0m0.017s
+P-2-2-6-1-1-0-0-orders
+
+real	0m0.132s
+user	0m0.105s
+sys	0m0.022s
+P-2-2-6-10-10-10-15-orders
+
+real	0m0.164s
+user	0m0.134s
+sys	0m0.025s
+P-2-2-6-inf-inf-inf-0-orders
+
+real	0m0.167s
+user	0m0.138s
+sys	0m0.025s
+P-inf-2-6-10-10-10-15-orders
+
+real	0m0.302s
+user	0m0.257s
+sys	0m0.039s
+P-0.5-3-3-10-10-10-15-orders
+
+real	0m0.128s
+user	0m0.101s
+sys	0m0.020s
+P-0.5-300-300-10-10-10-15-orders
+
+real	0m0.298s
+user	0m0.254s
+sys	0m0.039s
+P-140-2-2-10-10-10-15-orders
+
+real	0m0.321s
+user	0m0.271s
+sys	0m0.042s
+P-140-120-120-10-10-10-15-orders
+
+real	0m0.343s
+user	0m0.289s
+sys	0m0.046s
+P-140-200-200-10-10-10-15-orders
+
+real	0m0.318s
+user	0m0.270s
+sys	0m0.043s
+P-140-200-200-inf-inf-inf-0-orders
+
+real	0m0.435s
+user	0m0.376s
+sys	0m0.052s
+P-140-4200-4200-10-10-10-15-orders
+
+real	0m0.296s
+user	0m0.253s
+sys	0m0.037s
+P-200-60-70-10-10-10-15-orders
+
+real	0m0.343s
+user	0m0.292s
+sys	0m0.043s
+T-0-2-6-10-10-10-15-orders
+
+real	0m0.057s
+user	0m0.040s
+sys	0m0.013s
+T-2-0-0-10-10-10-15-orders
+
+real	1m6.169s
+user	0m0.412s
+sys	0m0.107s
+T-2-2-2-10-10-10-15-orders
+
+real	1m8.263s
+user	0m0.646s
+sys	0m0.153s
+T-2-2-6-0-0-0-0-orders
+
+real	1m11.459s
+user	0m0.534s
+sys	0m0.146s
+T-2-2-6-1-1-0-0-orders
+
+real	1m11.663s
+user	0m0.599s
+sys	0m0.154s
+T-2-2-6-10-10-10-15-orders
+
+real	1m10.277s
+user	0m0.729s
+sys	0m0.168s
+T-2-2-6-inf-inf-inf-0-orders
+
+real	1m11.896s
+user	0m0.752s
+sys	0m0.172s
+T-inf-2-6-10-10-10-15-orders
+
+real	0m6.297s
+user	0m0.564s
+sys	0m0.133s
+T-0.5-3-3-10-10-10-15-orders
+
+real	4m25.755s
+user	0m0.602s
+sys	0m0.164s
+T-0.5-300-300-10-10-10-15-orders
+
+real	9m22.667s
+user	0m1.163s
+sys	0m0.260s
+T-140-2-2-10-10-10-15-orders
+
+real	0m3.232s
+user	0m0.959s
+sys	0m0.201s
+T-140-120-120-10-10-10-15-orders
+
+real	2m1.234s
+user	0m0.948s
+sys	0m0.203s
+T-140-200-200-10-10-10-15-orders
+
+real	3m21.254s
+user	0m0.971s
+sys	0m0.205s
+T-140-200-200-inf-inf-inf-0-orders
+
+real	3m21.190s
+user	0m1.057s
+sys	0m0.203s
+T-200-60-70-10-10-10-15-orders
+
+real	1m10.749s
+user	0m0.911s
+sys	0m0.183s
